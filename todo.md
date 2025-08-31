@@ -21,21 +21,23 @@
 - [x] Layout componente de bază (mobile-first)
 
 ## Phase 2 — AI Services (Week 3–4)
-### Mathpix OCR
-- [ ] Creare cont Mathpix + API key
-- [ ] Service pentru upload imagini
-- [ ] Parser pentru răspuns Mathpix
-- [ ] Error handling pentru OCR failures
+### OCR Service (Tesseract.js)
+- [x] Integrare Tesseract.js pentru OCR
+- [x] Suport pentru limba română și simboluri matematice
+- [x] Service pentru procesarea imaginilor
+- [x] Error handling pentru OCR failures
+- [x] Configurare worker pentru performanță optimă
 
 ### Google Gemini
-- [ ] Setup Google AI Studio + API key
-- [ ] Service pentru Gemini API calls
-- [ ] Template-uri de prompt pedagogic
-- [ ] Validare și parsing răspunsuri
-- [ ] Implementare `PEDAGOGICAL_PROMPT`
+- [x] Setup Google AI Studio + API key (needed - vezi mai jos)
+- [x] Service pentru Gemini API calls
+- [x] Template-uri de prompt pedagogic
+- [x] Validare și parsing răspunsuri
+- [x] Implementare `PEDAGOGICAL_PROMPT`
+- [ ] Testare și optimizare
 
 ### Contracts
-- [ ] Definire `services/mathpix.ts` (interface `MathpixResponse`, `extractMathFromImage()`)
+- [x] Definire `services/mathpix.ts` (interface `OcrResult`, `extractMathFromImage()`)
 - [ ] Definire `services/gemini.ts` (interface `PedagogicalAnalysis`, `analyzeMathProblem()`)
 
 ## Phase 3 — Core Features (Week 5–7)
