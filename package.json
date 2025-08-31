@@ -1,0 +1,24 @@
+{
+  "name": "homework-companion",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo for Tutor Matematică cu AI (frontend + backend)",
+  "license": "MIT",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "echo \"Define build scripts in packages\"",
+    "dev": "echo \"Run dev scripts from packages\"",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^9.5.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.2.5"
+  }
+}
