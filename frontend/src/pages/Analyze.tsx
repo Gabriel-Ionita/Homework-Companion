@@ -1,203 +1,220 @@
-import React from 'react'
-import clsx from 'clsx'
-import { Card, CardBody, CardHeader, CardTitle, CardFooter } from '../components/Card'
-import Button from '../components/Button'
-import { uploadImage } from '../services/upload'
+import React, { useState, useEffect } from 'react';
+import { Card, CardBody, CardHeader, CardTitle, CardFooter } from '../components/Card';
+import ImageUpload from '../components/ImageUpload';
+import ConceptsList from '../components/ConceptsList';
+import ProgressiveHints from '../components/ProgressiveHints';
+import SimilarExercises from '../components/SimilarExercises';
+import type { UploadResult } from '../services/upload';
+import type { ProblemType } from '../types/problem';
+
+// Import the upload function
+const useUploadService = () => {
+  const [uploadFn, setUploadFn] = useState<typeof import('../services/upload').uploadImage>();
+
+  useEffect(() => {
+    const loadUploadService = async () => {
+      try {
+        // Always use the real upload service
+        const uploadModule = await import('../services/upload');
+        setUploadFn(() => uploadModule.uploadImage);
+      } catch (error) {
+        console.error('Failed to load upload service:', error);
+        // Fallback to mock only if the real service fails to load
+        if (import.meta.env.DEV) {
+          console.warn('Falling back to mock upload service');
+          const mock = await import('../services/__mocks__/upload');
+          setUploadFn(() => mock.uploadImage);
+        }
+      }
+    };
+    
+    loadUploadService();
+  }, []);
+
+  return uploadFn;
+};
 
 export default function Analyze() {
-  const [file, setFile] = React.useState<File | null>(null)
-  const [preview, setPreview] = React.useState<string | null>(null)
-  const inputRef = React.useRef<HTMLInputElement | null>(null)
-  const [isDragging, setIsDragging] = React.useState(false)
-  const [msg, setMsg] = React.useState<null | { type: 'info' | 'error' | 'success'; text: string }>(null)
-  const [loading, setLoading] = React.useState(false)
-  const abortRef = React.useRef<AbortController | null>(null)
+  const [file, setFile] = useState<File | null>(null);
+  const [msg, setMsg] = useState<{ type: 'info' | 'error' | 'success'; text: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<UploadResult | null>(null);
+  const [problemType, setProblemType] = useState<ProblemType>('algebra');
+  const uploadImage = useUploadService();
 
-  function onPickClick() {
-    inputRef.current?.click()
-  }
+  // Mock data - replace with actual data from your backend
+  const concepts = [
+    'Ecuații de gradul I',
+    'Proprietăți ale operațiilor',
+    'Rezolvarea ecuațiilor'
+  ];
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
-    if (!f) return
-    if (!f.type.startsWith('image/')) {
-      setMsg({ type: 'error', text: 'Te rugăm să selectezi o imagine (PNG/JPG).' })
-      return
+  const hints = [
+    'Identifică necunoscuta din problemă.',
+    'Aplică operațiile inverse pentru a izola necunoscuta.',
+    'Verifică soluția înlocuind necunoscuta cu valoarea găsită.'
+  ];
+
+  const similarExercises = [
+    {
+      id: 1,
+      title: 'Rezolvă ecuația: 2x + 5 = 15',
+      difficulty: 'Ușor',
+      concepts: ['Ecuații de gradul I']
+    },
+    {
+      id: 2,
+      title: 'Află numărul necunoscut: 3a - 7 = 14',
+      difficulty: 'Mediu',
+      concepts: ['Ecuații de gradul I', 'Operații cu numere întregi']
     }
-    // ~5MB client-side limit
-    if (f.size > 5 * 1024 * 1024) {
-      setMsg({ type: 'error', text: 'Fișierul este prea mare. Limita este ~5MB.' })
-      return
-    }
-    setFile(f)
-    const url = URL.createObjectURL(f)
-    setPreview(url)
-    setMsg({ type: 'success', text: 'Imagine pregătită pentru analiză.' })
-  }
+  ];
 
-  function onClear() {
-    setFile(null)
-    if (preview) URL.revokeObjectURL(preview)
-    setPreview(null)
-    if (inputRef.current) inputRef.current.value = ''
-    setMsg({ type: 'info', text: 'Selecția a fost ștearsă.' })
-  }
-
-  function handleDropFile(f: File | undefined) {
-    if (!f) return
-    // mimic input handler
-    if (!f.type.startsWith('image/')) {
-      setMsg({ type: 'error', text: 'Te rugăm să selectezi o imagine (PNG/JPG).' })
-      return
+  const handleImageSelect = async (selectedFile: File) => {
+    if (!uploadImage) {
+      setMsg({ type: 'error', text: 'Serviciul de încărcare nu este încărcat' });
+      return;
     }
-    if (f.size > 5 * 1024 * 1024) {
-      setMsg({ type: 'error', text: 'Fișierul este prea mare. Limita este ~5MB.' })
-      return
-    }
-    setFile(f)
-    const url = URL.createObjectURL(f)
-    setPreview(url)
-    setMsg({ type: 'success', text: 'Imagine adăugată prin drag & drop.' })
-  }
 
-  function onDragEnter(e: React.DragEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(true)
-  }
-  function onDragOver(e: React.DragEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(true)
-  }
-  function onDragLeave(e: React.DragEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-  }
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragging(false)
-    const f = e.dataTransfer?.files?.[0]
-    handleDropFile(f)
-  }
+    setFile(selectedFile);
+    setMsg({ type: 'info', text: 'Se procesează imaginea...' });
+    setLoading(true);
+    setAnalysisResult(null);
+
+    try {
+      console.log('Starting image upload...');
+      const result = await uploadImage(selectedFile);
+      console.log('Upload result:', result);
+      
+      // Check if we have valid data in the response
+      const hasValidData = result.text || result.latex_styled;
+      
+      if (!hasValidData) {
+        console.warn('No valid data in response:', result);
+        throw new Error('Nu s-au putut extrage date din imagine. Încercați cu o altă imagine.');
+      }
+      
+      // Update the analysis result with proper fallbacks
+      const analysisData = {
+        text: result.text || 'Niciun text extras',
+        latex_styled: result.latex_styled || '',
+        confidence: result.confidence,
+        note: result.note,
+        success: result.success !== false
+      };
+      
+      console.log('Setting analysis result:', analysisData);
+      setAnalysisResult(analysisData);
+      
+      // Set appropriate message
+      const messageText = result.note || (result.success !== false 
+        ? 'Analiză finalizată cu succes!' 
+       : 'A apărut o eroare la procesare');
+      
+      setMsg({ 
+        type: result.success !== false ? 'success' : 'error',
+        text: messageText
+      });
+      
+    } catch (error) {
+      console.error('Error processing image:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Eroare necunoscută la procesarea imaginii';
+      
+      setMsg({ 
+        type: 'error',
+        text: errorMessage
+      });
+      
+      // Reset the file input on error
+      setFile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Analizează problemă</h1>
-      <p className="text-gray-700">Încarcă o imagine a problemei. Vom extrage textul și îți vom oferi ghidaj.</p>
-
-      {/* Live region for non-blocking status messages */}
-      <div aria-live="polite" className="sr-only" id="upload-status" />
-
+    <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Încărcare imagine</CardTitle>
+          <CardTitle>Analiză problemă matematică</CardTitle>
         </CardHeader>
-        <CardBody>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onFileChange}
-            aria-label="Selectează o imagine pentru analiză"
-          />
-
-          {!preview ? (
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label="Zonă de încărcare. Trage și plasează o imagine sau apasă pentru a selecta." 
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onPickClick()}
-              onClick={onPickClick}
-              onDragEnter={onDragEnter}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
-              className={clsx(
-                'flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed p-8 text-center outline-none',
-                isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
-              )}
-            >
-              <div className="text-sm text-gray-600">Trage și plasează o imagine aici sau</div>
-              <Button aria-label="Deschide selectorul de fișiere" className="w-full sm:w-auto">
-                Selectează fișier
-              </Button>
-              <div className="text-xs text-gray-500">PNG, JPG. Max ~5MB</div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <img
-                src={preview}
-                alt="Previzualizare problemă"
-                className="aspect-video w-full rounded-lg border object-contain bg-gray-50"
-              />
-              <div className="space-y-3 text-sm text-gray-700">
-                <p>
-                  Fișier: <span className="font-medium">{file?.name}</span>
-                </p>
-                <p>Dimensiune: {(file!.size / 1024).toFixed(1)} KB</p>
-                <div className="flex flex-col gap-2 sm:flex-row" aria-busy={loading}>
-                  <Button
-                    onClick={async () => {
-                      if (!file || loading) return
-                      try {
-                        setMsg(null)
-                        setLoading(true)
-                        abortRef.current?.abort()
-                        abortRef.current = new AbortController()
-                        const res = await uploadImage(file, abortRef.current.signal)
-                        setMsg({ type: 'success', text: res.message || 'Încărcare reușită. În curând analiză OCR.' })
-                      } catch (e: any) {
-                        setMsg({ type: 'error', text: e?.message || 'Upload nereușit. Te rugăm încearcă din nou.' })
-                      } finally {
-                        setLoading(false)
-                      }
-                    }}
-                    disabled={!file || loading}
-                    className="sm:w-auto w-full"
-                  >
-                    Încarcă și analizează
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      abortRef.current?.abort()
-                      onClear()
-                    }}
-                    disabled={loading}
-                    className="sm:w-auto w-full"
-                  >
-                    Șterge
-                  </Button>
-                </div>
+        <CardBody className="flex flex-col items-center space-y-6">
+          <div className="w-full max-w-md">
+            <ImageUpload 
+              onImageSelect={handleImageSelect}
+              maxSizeMB={5}
+            />
+            {msg && (
+              <div className={`mt-4 p-3 rounded ${msg.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                {msg.text}
               </div>
-            </div>
-          )}
+            )}
+            {loading && (
+              <div className="mt-4 text-center text-blue-600">
+                Se procesează imaginea...
+              </div>
+            )}
+          </div>
 
-          {/* Inline status message */}
-          {msg && (
-            <div
-              role="status"
-              aria-atomic="true"
-              aria-live="polite"
-              className={clsx(
-                'mt-4 rounded-md px-3 py-2 text-sm',
-                msg.type === 'error' && 'bg-red-50 text-red-700 border border-red-200',
-                msg.type === 'success' && 'bg-green-50 text-green-700 border border-green-200',
-                msg.type === 'info' && 'bg-blue-50 text-blue-700 border border-blue-200'
-              )}
-            >
-              {msg.text}
+          {analysisResult && (
+            <div className="w-full mt-6 p-4 border rounded-lg bg-gray-50">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold">Rezultate analiză</h3>
+                {analysisResult.confidence !== undefined && (
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    analysisResult.confidence > 0.7 
+                      ? 'bg-green-100 text-green-800' 
+                      : analysisResult.confidence > 0.4 
+                        ? 'bg-yellow-100 text-yellow-800' 
+                        : 'bg-red-100 text-red-800'
+                  }`}>
+                    Încredere: {(analysisResult.confidence * 100).toFixed(0)}%
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <span className="font-medium block mb-2">Text extras:</span>
+                  <div className="p-3 bg-white rounded border font-mono whitespace-pre-wrap text-sm">
+                    {analysisResult.text}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <ConceptsList 
+                    concepts={concepts} 
+                    title="Concepte necesare"
+                    maxDisplayed={3}
+                  />
+
+                  <ProgressiveHints 
+                    hints={hints}
+                    buttonText="Arată următorul indiciu"
+                    completedText="Ai parcurs toate indiciile!"
+                  />
+
+                  <SimilarExercises 
+                    exercises={similarExercises}
+                    title="Exerciții similare"
+                  />
+                </div>
+
+                {analysisResult.note && (
+                  <div className="text-sm text-gray-600 italic pt-2 border-t">
+                    {analysisResult.note}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </CardBody>
         <CardFooter className="text-xs text-gray-500">
-          Notă: Upload-ul real va fi conectat la serviciul OCR (Mathpix) în etapa următoare.
+          Notă: Acesta este un mock. În versiunea finală, vom folosi serviciul OCR Mathpix.
         </CardFooter>
       </Card>
-    </section>
-  )
+    </div>
+  );
 }

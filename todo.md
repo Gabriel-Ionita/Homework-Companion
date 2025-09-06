@@ -38,21 +38,21 @@
 
 ### Contracts
 - [x] Definire `services/mathpix.ts` (interface `OcrResult`, `extractMathFromImage()`)
-- [ ] Definire `services/gemini.ts` (interface `PedagogicalAnalysis`, `analyzeMathProblem()`)
+- [x] Definire `services/gemini.ts` (interface `PedagogicalAnalysis`, `analyzeMathProblem()`)
 
 ## Phase 3 — Core Features (Week 5–7)
 ### Image Upload & Processing
-- [ ] Component pentru camera/upload (react-camera-pro sau input file)
-- [ ] Validare format/dimensiune imagini
+- [x] Component pentru camera/upload (input file cu previzualizare)
+- [x] Validare format/dimensiune imagini (în componenta ImageUpload)
 - [ ] Compresie imagini pentru optimizare (sharp)
-- [ ] Preview înainte de trimitere
-- [ ] Endpoint backend pentru procesare imagine (OCR → analiză)
+- [x] Preview înainte de trimitere (în componenta ImageUpload)
+- [x] Endpoint backend pentru procesare imagine (OCR → analiză)
 
 ### Results Display
-- [ ] Component pentru afișare tip problemă
-- [ ] Lista conceptelor necesare
-- [ ] Hints progresive (click pentru următorul)
-- [ ] Exerciții similare
+- [x] Component pentru afișare tip problemă
+- [x] Lista conceptelor necesare
+- [x] Hints progresive (click pentru următorul)
+- [x] Exerciții similare
 - [ ] Math rendering cu MathJax/KaTeX
 
 ### Database
