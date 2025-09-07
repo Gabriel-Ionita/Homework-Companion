@@ -49,24 +49,24 @@ export default function Analyze() {
     'Rezolvarea ecuațiilor'
   ];
 
-  const hints = [
-    'Identifică necunoscuta din problemă.',
-    'Aplică operațiile inverse pentru a izola necunoscuta.',
-    'Verifică soluția înlocuind necunoscuta cu valoarea găsită.'
-  ];
-
   const similarExercises = [
     {
-      id: 1,
-      title: 'Rezolvă ecuația: 2x + 5 = 15',
-      difficulty: 'Ușor',
-      concepts: ['Ecuații de gradul I']
+      id: '1',
+      title: 'Rezolvarea ecuației de gradul I',
+      description: 'Rezolvă ecuația: 2x + 5 = 15',
+      difficulty: 'easy' as const,
+      concepts: ['Ecuații de gradul I'],
+      type: 'equation',
+      source: 'Manual de matematică, clasa a VII-a'
     },
     {
-      id: 2,
-      title: 'Află numărul necunoscut: 3a - 7 = 14',
-      difficulty: 'Mediu',
-      concepts: ['Ecuații de gradul I', 'Operații cu numere întregi']
+      id: '2',
+      title: 'Găsirea necunoscutei',
+      description: 'Află numărul necunoscut: 3a - 7 = 14',
+      difficulty: 'medium' as const,
+      concepts: ['Ecuații de gradul I', 'Operații cu numere întregi'],
+      type: 'equation',
+      source: 'Culegere de exerciții, clasa a VII-a'
     }
   ];
 
@@ -190,11 +190,14 @@ export default function Analyze() {
                     maxDisplayed={3}
                   />
 
-                  <ProgressiveHints 
-                    hints={hints}
-                    buttonText="Arată următorul indiciu"
-                    completedText="Ai parcurs toate indiciile!"
-                  />
+                  {analysisResult?.text && (
+                    <ProgressiveHints 
+                      problemText={analysisResult.text}
+                      buttonText="Arată următorul indiciu"
+                      completedText="Ai parcurs toate indiciile!"
+                      maxHints={3}
+                    />
+                  )}
 
                   <SimilarExercises 
                     exercises={similarExercises}

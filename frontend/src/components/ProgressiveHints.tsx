@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -11,6 +12,7 @@ import {
   SxProps,
   Theme,
   alpha,
+  CircularProgress,
 } from '@mui/material';
 import {
   Lightbulb as LightbulbIcon,
@@ -27,47 +29,95 @@ interface Hint {
 }
 
 interface ProgressiveHintsProps {
-  hints: Omit<Hint, 'revealed'>[];
+  problemText: string;
   title?: string;
   sx?: SxProps<Theme>;
   buttonText?: string;
   completedText?: string;
   showStepNumbers?: boolean;
+  maxHints?: number;
 }
 
 /**
  * Displays progressive hints that can be revealed one at a time
  */
 export function ProgressiveHints({
-  hints: initialHints,
+  problemText,
   title = 'Indicații pas cu pas',
   sx,
   buttonText = 'Arată următoarea indicație',
   completedText = 'Ai parcurs toate indicațiile!',
   showStepNumbers = true,
+  maxHints = 3,
 }: ProgressiveHintsProps) {
-  const [hints, setHints] = useState<Hint[]>(() =>
-    initialHints.map((hint, index) => ({
-      ...hint,
-      revealed: index === 0, // First hint is revealed by default
-    }))
-  );
+  const [hints, setHints] = useState<Hint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
-  const revealNextHint = () => {
-    const nextHintIndex = hints.findIndex((hint) => !hint.revealed);
-    if (nextHintIndex !== -1) {
-      const newHints = [...hints];
-      newHints[nextHintIndex].revealed = true;
-      setHints(newHints);
+  const fetchHint = async (step: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.post('/api/gemini/hints', {
+        problemText,
+        currentStep: step
+      }, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const newHint = response.data;
+      const hintWithId = {
+        ...newHint,
+        id: `hint-${Date.now()}`,
+        revealed: true
+      };
+      
+      setHints(prevHints => [...prevHints, hintWithId]);
+      return newHint;
+    } catch (err) {
+      console.error('Error fetching hint:', err);
+      setError('Nu s-a putut încărca următorul indiciu. Încearcă din nou.');
+      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const allHintsRevealed = hints.every((hint) => hint.revealed);
-  const hasMoreHints = hints.some((hint) => !hint.revealed);
-  const revealedHints = hints.filter((hint) => hint.revealed);
+  const revealNextHint = async () => {
+    if (hints.length >= maxHints) return;
+    
+    const nextStep = hints.length;
+    await fetchHint(nextStep);
+  };
 
-  if (hints.length === 0) return null;
+  // Fetch first hint on mount
+  useEffect(() => {
+    if (problemText && hints.length === 0) {
+      fetchHint(0);
+    }
+  }, [problemText]);
+
+  const allHintsRevealed = hints.length >= maxHints || (hints.length > 0 && hints[hints.length - 1]?.isFinal);
+  const hasMoreHints = hints.length < maxHints && !allHintsRevealed;
+  const revealedHints = hints;
+
+  if (loading && hints.length === 0) {
+    return (
+      <Box sx={{ p: 2, textAlign: 'center' }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
+
+  if (error && hints.length === 0) {
+    return (
+      <Box sx={{ p: 2, color: 'error.main', textAlign: 'center' }}>
+        {error}
+      </Box>
+    );
+  }
 
   return (
     <Paper
@@ -145,15 +195,27 @@ export function ProgressiveHints({
 
           {hasMoreHints && (
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={revealNextHint}
-                startIcon={<LightbulbIcon />}
-                sx={{ borderRadius: 4 }}
-              >
-                {buttonText}
-              </Button>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : error ? (
+                <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+                  {error}
+                </Typography>
+              ) : (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  onClick={revealNextHint}
+                  disabled={!hasMoreHints || loading}
+                  startIcon={<LightbulbIcon />}
+                  sx={{ mt: 1 }}
+                >
+                  {hasMoreHints ? buttonText : completedText}
+                </Button>
+              )}
             </Box>
           )}
 

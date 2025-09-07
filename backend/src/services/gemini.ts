@@ -16,6 +16,80 @@ export interface PedagogicalAnalysis {
   caveats?: string[]
 }
 
+export interface ProgressiveHint {
+  id: string;
+  content: string;
+  isFinal?: boolean;
+}
+
+export async function generateProgressiveHints(
+  problemText: string,
+  currentStep: number = 0
+): Promise<ProgressiveHint> {
+  const API_KEY = process.env.GOOGLE_AI_API_KEY;
+  const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+  if (!API_KEY) {
+    // Fallback mock hints when API key is missing
+    const mockHints = [
+      { id: '1', content: 'Identifică necunoscuta din problemă.' },
+      { id: '2', content: 'Aplică operațiile inverse pentru a izola necunoscuta.' },
+      { id: '3', content: 'Verifică soluția înlocuind necunoscuta cu valoarea găsită.', isFinal: true }
+    ];
+    return mockHints[Math.min(currentStep, mockHints.length - 1)];
+  }
+
+  try {
+    const prompt = `
+    Generează un indiciu pentru pasul ${currentStep + 1} în rezolvarea următoarei probleme de matematică.
+    Problema: ${problemText}
+    
+    Indicii trebuie să fie:
+    1. Scurți și la obiect
+    2. Să ghideze elevul fără a dezvălui soluția direct
+    3. Să fie progresivi (fiecare indiciu duce mai aproape de soluție)
+    4. În limba română
+    `;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const hintText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Nu s-a putut genera un indiciu.';
+    
+    return {
+      id: `hint-${Date.now()}`,
+      content: hintText.trim(),
+      isFinal: currentStep >= 2 // Consider last hint as final
+    };
+  } catch (error) {
+    console.error('Error generating progressive hint:', error);
+    return {
+      id: `error-${Date.now()}`,
+      content: 'A apărut o eroare la generarea indiciului. Încearcă din mai târziu.',
+      isFinal: true
+    };
+  }
+}
+
 export async function analyzeWithGemini(problemText: string): Promise<PedagogicalAnalysis> {
   const API_KEY = process.env.GOOGLE_AI_API_KEY
   const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
